@@ -61,6 +61,11 @@ data LIOState l = LIOState { lioLabel     :: !l -- ^ Current label.
 -- newtype LIO l a = LIOTCB (IORef (LIOState l) -> IO a) deriving (Typeable)
 
 data LIO l a where
+    -- * Monadic actions
+    Bind :: LIO l a -> (a -> LIO l b) -> LIO l b
+    Return :: a -> LIO l a
+    Fail :: String -> LIO l a
+
     -- * Internal state
     GetLIOStateTCB :: LIO l (LIOState l)
     PutLIOStateTCB :: LIOState l -> LIO l ()
@@ -72,15 +77,16 @@ data LIO l a where
 
 instance Monad (LIO l) where
   {-# INLINE return #-}
-  return = LIOTCB . const . return
+  return = Return -- LIOTCB . const . return
   {-# INLINE (>>=) #-}
-  (LIOTCB ma) >>= k = LIOTCB $ \s -> do
-    a <- ma s
-    case k a of LIOTCB mb -> mb s
-  fail = LIOTCB . const . fail
+  (>>=) = Bind --(LIOTCB ma) >>= k = LIOTCB $ \s -> do
+    -- a <- ma s
+    -- case k a of LIOTCB mb -> mb s
+  {-# INLINE fail #-}
+  fail = Fail -- LIOTCB . const . fail
 
 instance Functor (LIO l) where
-  fmap f (LIOTCB a) = LIOTCB $ \s -> a s >>= return . f
+  fmap f l = l >>= (return .) f --fmap f (LIOTCB a) = LIOTCB $ \s -> a s >>= return . f
 -- fmap typically isn't inlined, so we don't inline our definition,
 -- but we do define it in terms of >>= and return (which are inlined)
 
@@ -104,13 +110,12 @@ getLIOStateTCB = GetLIOStateTCB -- LIOTCB readIORef
 -- | Set internal state.
 putLIOStateTCB :: LIOState l -> LIO l ()
 {-# INLINE putLIOStateTCB #-}
-putLIOStateTCB s = PutLIOStateTCB -- LIOTCB $ \sp -> writeIORef sp $! s
+putLIOStateTCB = PutLIOStateTCB -- LIOTCB $ \sp -> writeIORef sp $! s
 
 -- | Update the internal state given some function.
 modifyLIOStateTCB :: (LIOState l -> LIOState l) -> LIO l ()
 {-# INLINE modifyLIOStateTCB #-}
-modifyLIOStateTCB f = ModifyLIOStateTCB -- do
-
+modifyLIOStateTCB = ModifyLIOStateTCB -- do
   -- s <- getLIOStateTCB
   -- putLIOStateTCB (f s)
 
