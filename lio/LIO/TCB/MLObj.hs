@@ -32,25 +32,21 @@ module LIO.TCB.MLObj (
   ) where
 
 import safe Control.Concurrent
-import safe qualified Control.Exception as IO
+-- import safe qualified Control.Exception as IO
 import safe Control.Monad
-import safe Data.Map (Map)
+-- import safe Data.Map (Map)
 import safe qualified Data.Map as Map
 import safe Data.IORef
 import safe Data.Typeable
-import safe Data.Unique
+-- import safe Data.Unique
 
 import safe LIO.Core
 import safe LIO.Error
 import safe LIO.Label
 import LIO.TCB
+import LIO.TCB.MLabel
 
 
-
--- | Class of policies for when it is permissible to update an
--- 'MLabel'.
-class MLabelPolicy policy l where
-  mlabelPolicy :: (PrivDesc l p) => policy -> p -> l -> l -> LIO l ()
 
 -- | Class for 'MLabelPolicy's that don't encode any interesting
 -- values.  This allows 'mlObjTCB' to create an 'MLObj' without
@@ -79,20 +75,6 @@ instance MLabelPolicy ExternalML l where
 instance MLabelPolicyDefault ExternalML where
   mlabelPolicyDefault = ExternalML
 
--- | A mutable label.  Consists of a static label on the label, a
--- mutable label, and a list of threads currently accessing the label.
--- This is intended to be used by privileged code implementing @IO@
--- abstractions with mutable labels.  Routines for accessing such an
--- @IO@ abstraction should perform tne @IO@ from within a call to
--- 'withMLabelP', to ensure an exception is raised if another thread
--- revokes access with 'modifyMLabelP'.
-data MLabel policy l = MLabelTCB {
-    mlLabelLabel :: !l
-  , mlLabel :: !(IORef l)
-  , mlUsers :: !(MVar (Map Unique (l -> IO Bool)))
-  , mlPolicy :: policy
-  } deriving (Typeable)
-
 -- | Returns the immutable label that controls access to the mutable
 -- label value of an 'MLabel'.
 labelOfMlabel :: MLabel policy l -> l
@@ -116,45 +98,45 @@ readMLabelP p (MLabelTCB ll r _ _) = do
 -- action.
 withMLabelP :: (PrivDesc l p) =>
                Priv p -> MLabel policy l -> LIO l a -> LIO l a
-withMLabelP p (MLabelTCB ll r mv _) action = LIOTCB $ \s -> do
-  let run (LIOTCB io) = io s
-  run $ taintP p ll
-  tid <- myThreadId
-  u <- newUnique
-  let check lnew = do
-        LIOState { lioLabel = lcur, lioClearance = ccur } <- readIORef s
-        if canFlowToP p lcur lnew && canFlowToP p lnew lcur
-          then return True
-          else do IO.throwTo tid LabelError {
-                      lerrContext = []
-                    , lerrFailure = "withMLabelP label changed"
-                    , lerrCurLabel = lcur
-                    , lerrCurClearance = ccur
-                    , lerrPrivs = [GenericPrivDesc $ privDesc p]
-                    , lerrLabels = [lnew]
-                    }
-                  return False
-      enter = modifyMVar_ mv $ \m -> do
-        void $ readIORef r >>= check
-        return $ Map.insert u check m
-      exit = modifyMVar_ mv $ return . Map.delete u
-  IO.bracket_ enter exit $ run action
+withMLabelP = WithMLabelP -- LIOTCB $ \s -> do
+  -- let run (LIOTCB io) = io s
+  -- run $ taintP p ll
+  -- tid <- myThreadId
+  -- u <- newUnique
+  -- let check lnew = do
+  --       LIOState { lioLabel = lcur, lioClearance = ccur } <- readIORef s
+  --       if canFlowToP p lcur lnew && canFlowToP p lnew lcur
+  --         then return True
+  --         else do IO.throwTo tid LabelError {
+  --                     lerrContext = []
+  --                   , lerrFailure = "withMLabelP label changed"
+  --                   , lerrCurLabel = lcur
+  --                   , lerrCurClearance = ccur
+  --                   , lerrPrivs = [GenericPrivDesc $ privDesc p]
+  --                   , lerrLabels = [lnew]
+  --                   }
+  --                 return False
+  --     enter = modifyMVar_ mv $ \m -> do
+  --       void $ readIORef r >>= check
+  --       return $ Map.insert u check m
+  --     exit = modifyMVar_ mv $ return . Map.delete u
+  -- IO.bracket_ enter exit $ run action
 
 -- | Change the mutable label in an 'MLabel'.  Raises asynchronous
 -- exceptions in other threads that are inside 'withMLabelP' if the
 -- new label revokes their access.
 modifyMLabelP :: (PrivDesc l p, MLabelPolicy policy l) =>
                  Priv p -> MLabel policy l -> (l -> LIO l l) -> LIO l ()
-modifyMLabelP p (MLabelTCB ll r mv pl) fn = withContext "modifyMLabelP" $ do
-  guardWriteP p ll
-  s <- LIOTCB return
-  let run (LIOTCB io) = io s
-  ioTCB $ modifyMVar_ mv $ \m -> do
-    lold <- readIORef r
-    lnew <- run $ fn lold
-    () <- run $ mlabelPolicy pl p lold lnew
-    writeIORef r lnew
-    Map.fromList `fmap` filterM (($ lnew) . snd) (Map.assocs m)
+modifyMLabelP = ModifyMLabelP -- withContext "modifyMLabelP" $ do
+  -- guardWriteP p ll
+  -- s <- LIOTCB return
+  -- let run (LIOTCB io) = io s
+  -- ioTCB $ modifyMVar_ mv $ \m -> do
+  --   lold <- readIORef r
+  --   lnew <- run $ fn lold
+  --   () <- run $ mlabelPolicy pl p lold lnew
+  --   writeIORef r lnew
+  --   Map.fromList `fmap` filterM (($ lnew) . snd) (Map.assocs m)
 
 -- | @newMLabelP policy ll l@ creates an 'MLabel'.  @policy@ is a
 -- policy specifying under what conditions it is permissible to change
@@ -263,7 +245,7 @@ mblessTCB name io = mblessPTCB name io noPrivs
 -- | The 'MLObj' equivalent of 'blessPTCB' in
 -- "LIO.TCB.LObj#v:blessPTCB".  Use this for conveniently providing
 -- @LIO@ versions of standard @IO@ functions.
-mblessPTCB :: (LabelIO l io lio, Label l, PrivDesc l p) =>
+mblessPTCB :: (LabelIO l io lio, PrivDesc l p) =>
               String -> (a -> io) -> Priv p -> MLObj policy l a -> lio
 {-# INLINE mblessPTCB #-}
 mblessPTCB name io p (MLObjTCB ml a) = labelIO check (io a)

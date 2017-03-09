@@ -46,14 +46,14 @@ instance Exception AnyLabelError
 
 -- | Executes an action with a context string, which will be added to
 -- any label exception thrown.
--- 
+--
 -- Note: this function wraps an action with a 'catch', and thus may
 -- incur a small runtime cost (though it is well under 100 ns on
 -- machines we benchmarked).
 withContext :: String -> LIO l a -> LIO l a
-withContext ctx (LIOTCB act) =
-  LIOTCB $ \st -> act st `IO.catch` \e ->
-  IO.throwIO $ annotate ctx (e :: AnyLabelError)
+withContext = WithContext --
+  -- LIOTCB $ \st -> act st `IO.catch` \e ->
+  -- IO.throwIO $ annotate ctx (e :: AnyLabelError)
 
 -- | Definition of 'toException' for children of 'AnyLabelError' in
 -- the exception hierarchy.
@@ -108,10 +108,10 @@ labelError fl ls = do
     }
 
 -- | Throw a label-error exception.
-labelErrorP :: (Label l, PrivDesc l p) => String  -- ^ Function that failed.
-                                       -> Priv p  -- ^ Privileges involved.
-                                       -> [l]     -- ^ Labels involved.
-                                       -> LIO l a
+labelErrorP :: PrivDesc l p => String  -- ^ Function that failed.
+                            -> Priv p  -- ^ Privileges involved.
+                            -> [l]     -- ^ Labels involved.
+                            -> LIO l a
 labelErrorP fl p ls = do
   st <- getLIOStateTCB
   throwLIO LabelError {
