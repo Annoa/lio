@@ -1,8 +1,8 @@
 {-# LANGUAGE Unsafe #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGAUGE MultiParamTypeClasses #-}
+{-# LANGUAGE GADT #-}
 
 {- |
 
@@ -63,22 +63,43 @@ data LIOState l = LIOState { lioLabel     :: !l -- ^ Current label.
 -- newtype LIO l a = LIOTCB (IORef (LIOState l) -> IO a) deriving (Typeable)
 
 data LIO l a where
-    -- * Monadic actions
-    Bind :: LIO l a -> (a -> LIO l b) -> LIO l b
-    Return :: a -> LIO l a
-    Fail :: String -> LIO l a
+  -- * Monadic actions
+  Bind :: LIO l a -> (a -> LIO l b) -> LIO l b
+  Return :: a -> LIO l a
+  Fail :: String -> LIO l a
+  
+  -- * Internal state
+  GetLIOStateTCB :: LIO l (LIOState l)
+  PutLIOStateTCB :: LIOState l -> LIO l ()
+  ModifyLIOStateTCB :: (LIOState l -> LIOState l) -> LIO l ()
 
-    -- * Internal state
-    GetLIOStateTCB :: LIO l (LIOState l)
-    PutLIOStateTCB :: LIOState l -> LIO l ()
-    ModifyLIOStateTCB :: (LIOState l -> LIOState l) -> LIO l ()
+  -- * IO lift
+  IoTCB :: IO a -> LIO l a
 
-    -- * IO lift
-    IoTCB :: IO a -> LIO l a
+  -- * Exception handling
+  Catch :: (Label l, Exception e) => LIO l a -> (e -> LIO l a) -> LIO l a
+  -- * Manipulating label state 
+  GetLabel :: Label l => LIO l l
+  SetLabel :: Label l => l -> LIO l ()
+  SetLabelP :: PrivDesc l p => Priv p -> l -> LIO l ()
+  -- * Manipulating clearance
+  GetClearance :: Label l = LIO l l
+  SetClearance :: Label l => l -> LIO l ()
+  SetClearanceP :: PrivDesc l p => Priv p -> l -> LIO l ()
+  ScopeClearance :: Label l => LIO l a -> LIO l a
+  WithClearance :: Label l => l -> LIO l a -> Lio l a
+  WithClearanceP :: PrivDesc l p => Priv p -> l -> LIO l a -> LIO l a
+  -- * Allocate/write-only guards
+  GuardAlloc :: Label l => l -> LIO l ()
+  GuardAllocP :: PrivDesc l p => Priv p -> l -> LIO l ()
+  -- * Read-only goards
+  Taint :: Label l => l -> LIO l ()
+  TaintP :: PrivDesc l p => Priv p -> l -> LIO l ()
+  -- * Read-write guards
+  GuardWrite :: Label l => l -> LIO l ()
+  GuardWriteP :: PrivDesc l p => Priv p -> l -> LIO l ()
 
-    -- * Exception handling
-    Catch :: (Label l, Exception e) => LIO l a -> (e -> LIO l a) -> LIO l a
-
+  
 
 instance Monad (LIO l) where
   {-# INLINE return #-}
