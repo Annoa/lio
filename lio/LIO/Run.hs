@@ -25,11 +25,15 @@ import LIO.TCB
 --
 -- See also 'evalLIO'.
 runLIO :: LIO l a -> LIOState l -> IO (a, LIOState l)
-runLIO (LIOTCB m) s0 = do
+runLIO lio@(LIOTCB m) s0 = do
   sp <- newIORef s0
-  a <- m sp `IO.catch` \e -> return $ throw $ makeCatchable e
+  a <- runLio' lio sp `IO.catch` \e -> return $ throw $ makeCatchable e
   s1 <- readIORef sp
   return (a, s1)
+
+runLio' :: Label l => LIO l a -> IORef (LIOState l) -> IO a
+runLio' lio ref  = case lio of
+  _ -> undefined
 
 -- | A variant of 'runLIO' that returns results in 'Right' and
 -- exceptions in 'Left', much like the standard library 'try'

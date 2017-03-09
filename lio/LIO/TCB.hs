@@ -1,6 +1,8 @@
 {-# LANGUAGE Unsafe #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGAUGE MultiParamTypeClasses #-}
+{-# LANGUAGE GADT #-}
 
 {- | 
 
@@ -56,7 +58,25 @@ data LIOState l = LIOState { lioLabel     :: !l -- ^ Current label.
 -- arbitrary 'IO' actions from the 'LIO' monad.  However, trusted
 -- runtime functions can use 'ioTCB' to perform 'IO' actions (which
 -- they should only do after appropriately checking labels).
-newtype LIO l a = LIOTCB (IORef (LIOState l) -> IO a) deriving (Typeable)
+data LIO l a where
+-- LIOTCB (IORef (LIOState l) -> IO a) deriving (Typeable)
+  GetLabel :: Label l => LIO l l
+  SetLabel :: Label l => l -> LIO l ()
+  SetLabelP :: PrivDesc l p => Priv p -> l -> LIO l ()
+  GetClearance :: Label l = LIO l l
+  SetClearance :: Label l => l -> LIO l ()
+  SetClearanceP :: PrivDesc l p => Priv p -> l -> LIO l ()
+  ScopeClearance :: Label l => LIO l a -> LIO l a
+  WithClearance :: Label l => l -> LIO l a -> Lio l a
+  WithClearanceP :: PrivDesc l p => Priv p -> l -> LIO l a -> LIO l a
+  GuardAlloc :: Label l => l -> LIO l ()
+  GuardAllocP :: PrivDesc l p => Priv p -> l -> LIO l ()
+  Taint :: Label l => l -> LIO l ()
+  TaintP :: PrivDesc l p => Priv p -> l -> LIO l ()
+  GuardWrite :: Label l => l -> LIO l ()
+  GuardWriteP :: PrivDesc l p => Priv p -> l -> LIO l ()
+
+  
 
 instance Monad (LIO l) where
   {-# INLINE return #-}
