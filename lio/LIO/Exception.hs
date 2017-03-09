@@ -44,14 +44,14 @@ throwLIO = ioTCB . IO.throwIO
 -- exceeding the clarance, and an exception is always thrown at the
 -- time this happens.)
 catch :: (Label l, Exception e) => LIO l a -> (e -> LIO l a) -> LIO l a
-catch (LIOTCB io) h =
-  LIOTCB $ \s -> io s `IO.catch` \e -> case safeh e of LIOTCB ioe -> ioe s
-  where uncatchableType = typeOf (undefined :: UncatchableTCB)
-        safeh e@(SomeException einner) = do
-          when (typeOf einner == uncatchableType) $ throwLIO e
-          LIOState l c <- getLIOStateTCB
-          unless (l `canFlowTo` c) $ throwLIO e
-          maybe (throwLIO e) h $ fromException e
+catch = Catch
+  -- LIOTCB $ \s -> io s `IO.catch` \e -> case safeh e of LIOTCB ioe -> ioe s
+  -- where uncatchableType = typeOf (undefined :: UncatchableTCB)
+  --       safeh e@(SomeException einner) = do
+  --         when (typeOf einner == uncatchableType) $ throwLIO e
+  --         LIOState l c <- getLIOStateTCB
+  --         unless (l `canFlowTo` c) $ throwLIO e
+  --         maybe (throwLIO e) h $ fromException e
 
 -- | A version of 'catch' with the arguments swapped around.
 handle :: (Label l, Exception e) => (e -> LIO l a) -> LIO l a -> LIO l a

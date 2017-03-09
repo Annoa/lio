@@ -27,7 +27,7 @@ module LIO.TCB (
   -- * Executing IO actions
   , ioTCB
   -- * Privileged constructors
-  , Priv(..), Labeled(..), LabelOf(..)
+  , Labeled(..), LabelOf(..)
   -- * Uncatchable exception type
   , UncatchableTCB(..), makeCatchable
   -- * Trusted 'Show'
@@ -43,6 +43,8 @@ import safe Control.Monad
 import safe Data.Monoid ()
 import safe Data.IORef
 import safe Data.Typeable
+
+import safe LIO.Label
 
 --
 -- LIO Monad
@@ -73,6 +75,9 @@ data LIO l a where
 
     -- * IO lift
     IoTCB :: IO a -> LIO l a
+
+    -- * Exception handling
+    Catch :: (Label l, Exception e) => LIO l a -> (e -> LIO l a) -> LIO l a
 
 
 instance Monad (LIO l) where
@@ -159,25 +164,6 @@ makeCatchable e@(SomeException einner) =
   case cast einner of Just (UncatchableTCB enew) -> SomeException enew
                       Nothing                    -> e
 
---
--- Privileges
---
-
--- | A newtype wrapper that can be used by trusted code to transform a
--- powerless description of privileges into actual privileges.  The
--- constructor, 'PrivTCB', is dangerous as it allows creation of
--- arbitrary privileges.  Hence it is only exported by the unsafe
--- module "LIO.TCB".  A safe way to create arbitrary privileges is to
--- call 'privInit' (see "LIO.Run#v:privInit") from the 'IO' monad
--- before running your 'LIO' computation.
-newtype Priv a = PrivTCB a deriving (Show, Eq, Typeable)
-
-instance Monoid p => Monoid (Priv p) where
-  mempty = PrivTCB mempty
-  {-# INLINE mappend #-}
-  mappend (PrivTCB m1) (PrivTCB m2) = PrivTCB $ m1 `mappend` m2
-  {-# INLINE mconcat #-}
-  mconcat ps = PrivTCB $ mconcat $ map (\(PrivTCB p) -> p) ps
 
 --
 -- Pure labeled values
