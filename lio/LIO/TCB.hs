@@ -27,7 +27,7 @@ module LIO.TCB (
   -- * Executing IO actions
   , ioTCB
   -- * Privileged constructors
-  , Labeled(..), LabelOf(..)
+  , Priv(..), Labeled(..), LabelOf(..)
   -- * Uncatchable exception type
   , UncatchableTCB(..), makeCatchable
   -- * Trusted 'Show'
@@ -45,6 +45,7 @@ import safe Data.IORef
 import safe Data.Typeable
 
 import safe LIO.Label
+import LIO.Priv (Priv(..))
 
 --
 -- LIO Monad
