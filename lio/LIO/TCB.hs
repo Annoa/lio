@@ -1,8 +1,10 @@
 {-# LANGUAGE Unsafe #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs #-}
 
-{- | 
+{- |
 
 This module exports symbols that must be accessible only to trusted
 code.  By convention, the names of such symbols always end
@@ -56,7 +58,17 @@ data LIOState l = LIOState { lioLabel     :: !l -- ^ Current label.
 -- arbitrary 'IO' actions from the 'LIO' monad.  However, trusted
 -- runtime functions can use 'ioTCB' to perform 'IO' actions (which
 -- they should only do after appropriately checking labels).
-newtype LIO l a = LIOTCB (IORef (LIOState l) -> IO a) deriving (Typeable)
+-- newtype LIO l a = LIOTCB (IORef (LIOState l) -> IO a) deriving (Typeable)
+
+data LIO l a where
+    -- * Internal state
+    GetLIOStateTCB :: LIO l (LIOState l)
+    PutLIOStateTCB :: LIOState l -> LIO l ()
+    ModifyLIOStateTCB :: (LIOState l -> LIOState l) -> LIO l ()
+
+    -- * IO lift
+    IoTCB :: IO a -> LIO l a
+
 
 instance Monad (LIO l) where
   {-# INLINE return #-}
@@ -87,19 +99,20 @@ instance Applicative (LIO l) where
 -- internal state to trusted code.
 getLIOStateTCB :: LIO l (LIOState l)
 {-# INLINE getLIOStateTCB #-}
-getLIOStateTCB = LIOTCB readIORef
+getLIOStateTCB = GetLIOStateTCB -- LIOTCB readIORef
 
 -- | Set internal state.
 putLIOStateTCB :: LIOState l -> LIO l ()
 {-# INLINE putLIOStateTCB #-}
-putLIOStateTCB s = LIOTCB $ \sp -> writeIORef sp $! s
+putLIOStateTCB s = PutLIOStateTCB -- LIOTCB $ \sp -> writeIORef sp $! s
 
 -- | Update the internal state given some function.
 modifyLIOStateTCB :: (LIOState l -> LIOState l) -> LIO l ()
 {-# INLINE modifyLIOStateTCB #-}
-modifyLIOStateTCB f = do
-  s <- getLIOStateTCB
-  putLIOStateTCB (f s)
+modifyLIOStateTCB f = ModifyLIOStateTCB -- do
+
+  -- s <- getLIOStateTCB
+  -- putLIOStateTCB (f s)
 
 --
 -- Executing IO actions
@@ -110,7 +123,7 @@ modifyLIOStateTCB f = do
 -- the 'IO' computation will not violate IFC policy.
 ioTCB :: IO a -> LIO l a
 {-# INLINE ioTCB #-}
-ioTCB = LIOTCB . const
+ioTCB = IoTCB -- LIOTCB . const
 
 --
 -- Exception handling
@@ -182,13 +195,13 @@ instance (Show l, Show a) => ShowTCB (Labeled l a) where
 -- | Generic class used to get the type of labeled objects. For,
 -- instance, if you wish to associate a label with a pure value (as in
 -- "LIO.Labeled"), you may create a data type:
--- 
+--
 -- > data LVal l a = LValTCB l a
--- 
+--
 -- Then, you may wish to allow untrusted code to read the label of any
 -- @LVal@s but not necessarily the actual value. To do so, simply
 -- provide an instance for @LabelOf@:
--- 
+--
 -- > instance LabelOf LVal where
 -- >   labelOf (LValTCB l a) = l
 class LabelOf t where
