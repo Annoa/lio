@@ -18,7 +18,6 @@ import safe qualified Control.Concurrent as IO
 import safe Data.IORef
 import safe Data.Typeable
 import safe Control.Monad
-import safe Data.Map (Map)
 import safe qualified Data.Map as Map
 import safe Data.Unique
 
@@ -130,9 +129,7 @@ runLIO lio_ s0 = do
 
       -- * Monadic actions
       Return a -> return a
-      Bind ma k -> do
-        a <- runLIO' ioRef ma
-        runLIO' ioRef $ k a
+      Bind ma k -> runLIO' ioRef ma >>= runLIO' ioRef . k
       Fail s -> fail s
 
       -- * Internal state
