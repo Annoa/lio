@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGAUGE MultiParamTypeClasses #-}
-{-# LANGUAGE GADT #-}
+{-# LANGUAGE GADTs #-}
 
 {- |
 
@@ -84,11 +84,11 @@ data LIO l a where
   SetLabel :: Label l => l -> LIO l ()
   SetLabelP :: PrivDesc l p => Priv p -> l -> LIO l ()
   -- * Manipulating clearance
-  GetClearance :: Label l = LIO l l
+  GetClearance :: Label l => LIO l l
   SetClearance :: Label l => l -> LIO l ()
   SetClearanceP :: PrivDesc l p => Priv p -> l -> LIO l ()
   ScopeClearance :: Label l => LIO l a -> LIO l a
-  WithClearance :: Label l => l -> LIO l a -> Lio l a
+  WithClearance :: Label l => l -> LIO l a -> LIO l a
   WithClearanceP :: PrivDesc l p => Priv p -> l -> LIO l a -> LIO l a
   -- * Allocate/write-only guards
   GuardAlloc :: Label l => l -> LIO l ()

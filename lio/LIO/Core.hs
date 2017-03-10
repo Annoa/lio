@@ -102,15 +102,13 @@ import LIO.TCB
 
 -- | Returns the value of the thread's current label.
 getLabel :: Label l => LIO l l
-getLabel = GetLabel -- lioLabel `liftM` getLIOStateTCB
+getLabel = GetLabel 
 
 
 -- | Raises the current label to the provided label, which must be
 -- between the current label and clearance. See 'taint'.
 setLabel :: Label l => l -> LIO l ()
-setLabel = SetLabel --l = withContext "setLabel" $ do
-  -- guardAlloc l
-  -- modifyLIOStateTCB $ \s -> s { lioLabel = l }
+setLabel = SetLabel 
 
 -- | If the current label is @oldLabel@ and the current clearance is
 -- @clearance@, this function allows code to raise the current label
@@ -119,24 +117,16 @@ setLabel = SetLabel --l = withContext "setLabel" $ do
 -- argument affects the label check, not the clearance check; call
 -- 'setClearanceP' first to raise the clearance.)
 setLabelP :: PrivDesc l p => Priv p -> l -> LIO l ()
-setLabelP = SetLabelP --p l = withContext "setLabelP" $ do
-  -- guardAllocP p l
-  -- modifyLIOStateTCB $ \s -> s { lioLabel = l }
+setLabelP = SetLabelP 
 
--- | Returns the thread's current clearance.
-getClearance :: Label l => LIO l l
-getClearance = GetClearance --lioClearance `liftM` getLIOStateTCB
+getClearance = GetClearance 
 
 -- | Lowers the current clearance.  The new clerance must be between
 -- the current label and previous current clerance.  One cannot raise
 -- the current label or create object with labels higher than the
 -- current clearance.
 setClearance :: Label l => l -> LIO l ()
-setClearance SetClearance --cnew = do
-  --LIOState { lioLabel = l, lioClearance = c } <- getLIOStateTCB
-  --unless (canFlowTo l cnew && canFlowTo cnew c) $
-    --labelError "setClearance" [cnew]
-  --putLIOStateTCB $ LIOState l cnew
+setClearance = SetClearance 
 
 -- | Raises the current clearance (undoing the effects of
 -- 'setClearance') by exercising privileges.  If the current label is
