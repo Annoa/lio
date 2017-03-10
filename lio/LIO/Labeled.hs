@@ -32,7 +32,7 @@ module LIO.Labeled (
   , unlabel, unlabelP
   -- * Relabel values
   , relabelLabeledP
-  , taintLabeled, taintLabeledP 
+  , taintLabeled, taintLabeledP
   , lFmap, lAp
   ) where
 
@@ -152,7 +152,7 @@ taintLabeledP p l (LabeledTCB lold v) = do
 
 Making 'Labeled' an instance of 'Functor' is problematic because:
 
-1. 'fmap' would have type @Labeled l a -> (a -> b) -> Labeled b@ and thus 
+1. 'fmap' would have type @Labeled l a -> (a -> b) -> Labeled b@ and thus
     creating /new/ labeled values above the current clearance or below
     the current label would be feasible (given one such value).
 2. 'LIO' is polymorphic in the label type and thus 'fmap' would is
