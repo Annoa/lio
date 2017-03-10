@@ -127,18 +127,14 @@ data LIO l a where
 
 instance Monad (LIO l) where
   {-# INLINE return #-}
-  return = Return -- LIOTCB . const . return
+  return = Return
   {-# INLINE (>>=) #-}
-  (>>=) = Bind --(LIOTCB ma) >>= k = LIOTCB $ \s -> do
-    -- a <- ma s
-    -- case k a of LIOTCB mb -> mb s
+  (>>=) = Bind
   {-# INLINE fail #-}
-  fail = Fail -- LIOTCB . const . fail
+  fail = Fail
 
 instance Functor (LIO l) where
-  fmap f l = l >>= (return .) f --fmap f (LIOTCB a) = LIOTCB $ \s -> a s >>= return . f
--- fmap typically isn't inlined, so we don't inline our definition,
--- but we do define it in terms of >>= and return (which are inlined)
+  fmap f l = l >>= (return .) f
 
 instance Applicative (LIO l) where
   {-# INLINE pure #-}

@@ -1,5 +1,4 @@
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
 
 {- |
@@ -21,13 +20,11 @@ module LIO.Exception (
   , onException, finally, bracket, evaluate
   ) where
 
-import safe Prelude ((.), ($), (==), undefined, flip)
-import safe Data.Maybe
+import safe Prelude ((.), ($), flip)
 import safe Data.Either
 import safe Control.Exception (Exception(..), SomeException(..))
 import safe qualified Control.Exception as IO
 import safe Control.Monad
-import safe Data.Typeable
 
 import LIO.TCB
 import safe LIO.Label
@@ -58,19 +55,19 @@ handle :: (Label l, Exception e) => (e -> LIO l a) -> LIO l a -> LIO l a
 handle = flip catch
 
 -- | Like 'finally', but only performs the final action if there was
--- an exception raised by the computation. 
+-- an exception raised by the computation.
 onException :: Label l => LIO l a -> LIO l b -> LIO l a
 onException io cleanup =
   io `catch` \e -> cleanup >> throwLIO (e :: SomeException)
 
 -- | A variant of 'bracket' where the return value from the first
--- computation is not required. 
+-- computation is not required.
 finally :: Label l => LIO l a -> LIO l b -> LIO l a
 finally io cleanup = do
   a <- io `onException` cleanup
   void cleanup
   return a
-  
+
 
 
 -- | When you want to acquire a resource, do some work with it, and
@@ -78,7 +75,7 @@ finally io cleanup = do
 -- because bracket will install the necessary exception handler to
 -- release the resource in the event that an exception is raised
 -- during the computation. If an exception is raised, then bracket
--- will re-raise the exception (after performing the release). 
+-- will re-raise the exception (after performing the release).
 bracket :: Label l => LIO l a         -- ^ Computation to run first
                    -> (a -> LIO l c)  -- ^ Computation to run last
                    -> (a -> LIO l b)  -- ^ Computation to run in-between
