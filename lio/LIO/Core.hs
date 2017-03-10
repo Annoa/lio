@@ -104,7 +104,6 @@ import LIO.TCB
 getLabel :: Label l => LIO l l
 getLabel = GetLabel 
 
-
 -- | Raises the current label to the provided label, which must be
 -- between the current label and clearance. See 'taint'.
 setLabel :: Label l => l -> LIO l ()
@@ -119,6 +118,8 @@ setLabel = SetLabel
 setLabelP :: PrivDesc l p => Priv p -> l -> LIO l ()
 setLabelP = SetLabelP 
 
+-- | Returns the thread's current clearance.
+getClearance :: Label l => LIO l l
 getClearance = GetClearance 
 
 -- | Lowers the current clearance.  The new clerance must be between
@@ -141,11 +142,11 @@ setClearance = SetClearance
 -- current clearance, code must always raise the current clearance, to
 -- read/write data above the current clearance.
 setClearanceP :: PrivDesc l p => Priv p -> l -> LIO l ()
-setClearanceP = SetClearanceP -- p cnew = do
-  --LIOState { lioLabel = l, lioClearance = c } <- getLIOStateTCB
--- unless (canFlowTo l cnew && canFlowToP p cnew c) $
---    labelErrorP "setClearanceP" p [cnew]
- -- putLIOStateTCB $ LIOState l cnew
+setClearanceP = SetClearanceP -- do
+  -- LIOState { lioLabel = l, lioClearance = c } <- getLIOStateTCB
+  -- unless (canFlowTo l cnew && canFlowToP p cnew c) $
+  --   labelErrorP "setClearanceP" p [cnew]
+  -- putLIOStateTCB $ LIOState l cnew
 
 -- | Runs an 'LIO' action and re-sets the current clearance to its
 -- previous value once the action returns.  In particular, if the
@@ -158,19 +159,19 @@ setClearanceP = SetClearanceP -- p cnew = do
 -- be caught outside a second @scopeClearance@ that restores the
 -- clearance to higher than the current label.
 scopeClearance :: Label l => LIO l a -> LIO l a
-scopeClearance = ScopeClearance {- (LIOTCB action) = LIOTCB $ \sp -> do
-  LIOState _ c <- readIORef sp
-  ea <- IO.try $ action sp
-  LIOState l _ <- readIORef sp
-  writeIORef sp (LIOState l c)
-  if l `canFlowTo` c
-    then either (IO.throwIO :: SomeException -> IO a) return ea
-    else IO.throwIO LabelError { lerrContext = []
-                               , lerrFailure = "scopeClearance"
-                               , lerrCurLabel = l
-                               , lerrCurClearance = c
-                               , lerrPrivs = []
-                               , lerrLabels = [] } -}
+scopeClearance = ScopeClearance -- LIOTCB $ \sp -> do
+  -- LIOState _ c <- readIORef sp
+  -- ea <- IO.try $ action sp
+  -- LIOState l _ <- readIORef sp
+  -- writeIORef sp (LIOState l c)
+  -- if l `canFlowTo` c
+  --   then either (IO.throwIO :: SomeException -> IO a) return ea
+  --   else IO.throwIO LabelError { lerrContext = []
+  --                              , lerrFailure = "scopeClearance"
+  --                              , lerrCurLabel = l
+  --                              , lerrCurClearance = c
+  --                              , lerrPrivs = []
+  --                              , lerrLabels = [] }
 
 -- | Temporarily lowers the clearance for a computation, then restores
 -- it.  Equivalent to:
@@ -228,6 +229,7 @@ withClearanceP = WithClearanceP  -- p c lio = scopeClearance $ setClearanceP p c
      'canFlowTo'.) This is ensured by the 'guardWrite' function, which
      does the equivalent of 'taint' to ensure the target label @ldata@
      can flow to the current label, then throws an exception if
+     
      @lcurrent@ cannot flow back to the target label.
 
 Note that a write /always/ implies a read.  Hence, when writing to an

@@ -107,3 +107,6 @@ Library
     LIO.TCB
     LIO.TCB.LObj
     LIO.TCB.MLObj
+    LIO.TCB.MLabel
+    -- * Priv
+    LIO.Priv

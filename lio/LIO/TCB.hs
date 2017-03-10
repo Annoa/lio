@@ -34,6 +34,8 @@ module LIO.TCB (
   , ShowTCB(..)
   -- * 'LabeledResult's
   , LabeledResult(..), LResStatus(..)
+  -- * MLabel
+  , MLabelPolicy(..)
   ) where
 
 import safe Control.Applicative ()
@@ -45,6 +47,7 @@ import safe Data.IORef
 import safe Data.Typeable
 
 import safe LIO.Label
+import LIO.TCB.MLabel
 import LIO.Priv (Priv(..))
 
 --
@@ -64,11 +67,36 @@ data LIOState l = LIOState { lioLabel     :: !l -- ^ Current label.
 -- newtype LIO l a = LIOTCB (IORef (LIOState l) -> IO a) deriving (Typeable)
 
 data LIO l a where
+  -- * Internal State
+  -- ** Labels
+  GetLabel :: Label l => LIO l l
+  SetLabel :: Label l => l -> LIO l ()
+  SetLabelP :: PrivDesc l p => Priv p -> l -> LIO l ()
+
+  -- ** Clearances
+  GetClearance :: Label l => LIO l l
+  SetClearance :: Label l => l -> LIO l ()
+  SetClearanceP :: PrivDesc l p => Priv p -> l -> LIO l ()
+  ScopeClearance :: Label l => LIO l a -> LIO l a
+  WithClearance :: Label l => l -> LIO l a -> LIO l a
+  WithClearanceP :: PrivDesc l p => Priv p -> l -> LIO l a -> LIO l a
+
+  -- * Guards
+  -- ** Allocation
+  GuardAlloc :: Label l => l -> LIO l ()
+  GuardAllocP :: PrivDesc l p => Priv p -> l -> LIO l ()
+
+  -- ** Read
+  Taint :: Label l => l -> LIO l ()
+  TaintP :: PrivDesc l p => Priv p -> l -> LIO l ()
+  GuardWrite :: Label l => l -> LIO l ()
+  GuardWriteP :: PrivDesc l p => Priv p -> l -> LIO l ()
+
   -- * Monadic actions
   Bind :: LIO l a -> (a -> LIO l b) -> LIO l b
   Return :: a -> LIO l a
   Fail :: String -> LIO l a
-  
+
   -- * Internal state
   GetLIOStateTCB :: LIO l (LIOState l)
   PutLIOStateTCB :: LIOState l -> LIO l ()
@@ -79,28 +107,23 @@ data LIO l a where
 
   -- * Exception handling
   Catch :: (Label l, Exception e) => LIO l a -> (e -> LIO l a) -> LIO l a
-  -- * Manipulating label state 
-  GetLabel :: Label l => LIO l l
-  SetLabel :: Label l => l -> LIO l ()
-  SetLabelP :: PrivDesc l p => Priv p -> l -> LIO l ()
-  -- * Manipulating clearance
-  GetClearance :: Label l => LIO l l
-  SetClearance :: Label l => l -> LIO l ()
-  SetClearanceP :: PrivDesc l p => Priv p -> l -> LIO l ()
-  ScopeClearance :: Label l => LIO l a -> LIO l a
-  WithClearance :: Label l => l -> LIO l a -> LIO l a
-  WithClearanceP :: PrivDesc l p => Priv p -> l -> LIO l a -> LIO l a
-  -- * Allocate/write-only guards
-  GuardAlloc :: Label l => l -> LIO l ()
-  GuardAllocP :: PrivDesc l p => Priv p -> l -> LIO l ()
-  -- * Read-only goards
-  Taint :: Label l => l -> LIO l ()
-  TaintP :: PrivDesc l p => Priv p -> l -> LIO l ()
-  -- * Read-write guards
-  GuardWrite :: Label l => l -> LIO l ()
-  GuardWriteP :: PrivDesc l p => Priv p -> l -> LIO l ()
 
-  
+  -- * Error handling
+  WithContext :: String -> LIO l a -> LIO l a
+
+  -- * Concurrent handling
+  ForkLIO     :: LIO l () -> LIO l ()
+  LForkP      :: PrivDesc l p =>
+                 Priv p -> l -> LIO l a -> LIO l (LabeledResult l a)
+  LWaitP      :: PrivDesc l p => Priv p -> LabeledResult l a -> LIO l a
+  TrylWaitP   :: PrivDesc l p => Priv p -> LabeledResult l a -> LIO l (Maybe a)
+  TimedlWaitP :: PrivDesc l p => Priv p -> LabeledResult l a -> Int -> LIO l a
+
+  -- * MLabel handling
+  WithMLabelP   :: (PrivDesc l p) =>
+                   Priv p -> MLabel policy l -> LIO l a -> LIO l a
+  ModifyMLabelP :: (PrivDesc l p, MLabelPolicy policy l) =>
+                   Priv p -> MLabel policy l -> (l -> LIO l l) -> LIO l ()
 
 instance Monad (LIO l) where
   {-# INLINE return #-}
@@ -267,3 +290,8 @@ data LabeledResult l a = LabeledResultTCB {
 
 instance LabelOf LabeledResult where
   labelOf = lresLabelTCB
+
+-- | Class of policies for when it is permissible to update an
+-- 'MLabel'.
+class MLabelPolicy policy l where
+  mlabelPolicy :: (PrivDesc l p) => policy -> p -> l -> l -> LIO l ()
