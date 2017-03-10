@@ -163,7 +163,7 @@ runLIO lio_ s0 = do
 
       -- * Concurrent handling
       ForkLIO lio' -> runLIO' ioRef $ do
-        s <- getLIOStateTCB
+        s <- GetLIOStateTCB
         IoTCB $ void $ IO.forkIO $ do
           ((), _) <- runLIO lio' s
           return ()
@@ -172,7 +172,7 @@ runLIO lio_ s0 = do
         withContext "lForkP" $ GuardAllocP p l
         mv <- IoTCB IO.newEmptyMVar
         st <- IoTCB $ newIORef LResEmpty
-        s' <- getLIOStateTCB
+        s' <- GetLIOStateTCB
         tid <- IoTCB $ IO.mask $ \unmask -> IO.forkIO $ do
           sp <- newIORef s'
           ea <- IO.try $ unmask $ runContT (runLIO' sp action) return
@@ -187,7 +187,7 @@ runLIO lio_ s0 = do
 
       LWaitP p (LabeledResultTCB _ l mv st) -> runLIO' ioRef $
         withContext "lWaitP" (TaintP p l) >> go
-        where go = ioTCB (readIORef st) >>= check
+        where go = IoTCB (readIORef st) >>= check
               check LResEmpty = ioTCB (IO.readMVar mv) >> go
               check (LResResult a) = return $! a
               check (LResLabelTooHigh lnew) = do
