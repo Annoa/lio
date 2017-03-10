@@ -70,6 +70,7 @@ Library
    ,containers
    ,bytestring    >= 0.10
    ,hashable      >= 1.2
+   ,mtl           >= 2.1
 
   GHC-options: -Wall -fno-warn-orphans
   include-dirs: LIO/TCB
@@ -78,6 +79,7 @@ Library
     -- * Top-level exporter
     LIO
     LIO.Run
+    LIO.CPS
     -- * Label definition
     LIO.Label
     -- * Core library
