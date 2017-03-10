@@ -158,8 +158,8 @@ runLIO lio_ s0 = do
 
       -- * Error handling
       WithContext ctx lio' ->
-        liftIO $ IO.catch (runContT (runLIO' ioRef lio') return) $ \e ->
-          liftIO $ IO.throwIO $ annotate ctx (e :: AnyLabelError)
+        liftIO . IO.catch (runContT (runLIO' ioRef lio') return) $ \e ->
+          liftIO . IO.throwIO . annotate ctx $ (e :: AnyLabelError)
 
       -- * Concurrent handling
       ForkLIO lio' -> runLIO' ioRef $ do
