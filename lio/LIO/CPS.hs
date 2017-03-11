@@ -8,7 +8,12 @@
 -- use in invoking 'LIO' code.  The functions are also available via
 -- "LIO" and "LIO.Core", but those modules will clutter your namespace
 -- with symbols you don't need in the 'IO' monad.
-module LIO.CPS (LIOState(..), runLIO, tryLIO, evalLIO, privInit) where
+module LIO.CPS ( LIOState(..)
+               , runLIO
+               , tryLIO -- from LIO.Run
+               , evalLIO -- from LIO.Run
+               , privInit -- from LIO.Run
+               ) where
 
 import safe Control.Exception
 import safe qualified Control.Exception as IO
@@ -26,6 +31,8 @@ import safe LIO.Label
 
 import LIO.TCB.MLabel
 import LIO.TCB
+
+import LIO.Run (tryLIO, evalLIO, privInit)
 
 -- | Execute an 'LIO' action, returning its result and the final label
 -- state as a pair.  Note that it returns a pair whether or not the
@@ -264,43 +271,3 @@ runLIO lio_ s0 = do
             () <- runContT (runLIO' ioRef $ mlabelPolicy pl p lold lnew) return
             writeIORef r lnew
             Map.fromList `fmap` filterM (($ lnew) . snd) (Map.assocs m)
-
-
--- | A variant of 'runLIO' that returns results in 'Right' and
--- exceptions in 'Left', much like the standard library 'try'
--- function.
-tryLIO :: Label l => LIO l a -> LIOState l -> IO (Either SomeException a, LIOState l)
-tryLIO lio s0 = runLIO lio s0 >>= tryit
-  where tryit (a, s) = do
-          ea <- try (evaluate a)
-          return (ea, s)
-
-
--- | Given an 'LIO' computation and some initial state, return an IO
--- action which, when executed, will perform the IFC-safe LIO
--- computation.
---
--- Because untrusted code cannot execute 'IO' computations, this function
--- should only be useful within trusted code.  No harm is done from
--- exposing the @evalLIO@ symbol to untrusted code.  (In general,
--- untrusted code is free to produce 'IO' computations, but it cannot
--- execute them.)
---
--- Unlike 'runLIO', this function throws an exception if the
--- underlying 'LIO' action terminates with an exception.
-evalLIO :: Label l => LIO l a -> LIOState l -> IO a
-evalLIO lio s = do
-  (a, _) <- runLIO lio s
-  return $! a
-
--- | Initialize some privileges (within the 'IO' monad) that can be
--- passed to 'LIO' computations run with 'runLIO' or 'evalLIO'.  This
--- is a pure function, but the result is encapsulated in 'IO' to
--- make the return value inaccessible from 'LIO' computations.
---
--- Note the same effect can be achieved using the 'PrivTCB'
--- constructor, but 'PrivTCB' is easier to misuse and is only available by
--- importing "LIO.TCB".
-privInit :: (SpeaksFor p) => p -> IO (Priv p)
-privInit p | isPriv p  = fail "privInit called on Priv object"
-           | otherwise = return $ PrivTCB p
