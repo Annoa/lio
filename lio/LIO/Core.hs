@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
-
+{-# LANGAUGE GADT #-}
 {- | 
 
 This module implements the core of the Labeled IO (LIO) information
@@ -98,13 +98,12 @@ import LIO.TCB
 
 -- | Returns the value of the thread's current label.
 getLabel :: Label l => LIO l l
-getLabel = GetLabel
-
+getLabel = GetLabel 
 
 -- | Raises the current label to the provided label, which must be
 -- between the current label and clearance. See 'taint'.
 setLabel :: Label l => l -> LIO l ()
-setLabel = SetLabel
+setLabel = SetLabel 
 
 -- | If the current label is @oldLabel@ and the current clearance is
 -- @clearance@, this function allows code to raise the current label
@@ -113,18 +112,18 @@ setLabel = SetLabel
 -- argument affects the label check, not the clearance check; call
 -- 'setClearanceP' first to raise the clearance.)
 setLabelP :: PrivDesc l p => Priv p -> l -> LIO l ()
-setLabelP = SetLabelP
+setLabelP = SetLabelP 
 
 -- | Returns the thread's current clearance.
 getClearance :: Label l => LIO l l
-getClearance = GetClearance
+getClearance = GetClearance 
 
 -- | Lowers the current clearance.  The new clerance must be between
 -- the current label and previous current clerance.  One cannot raise
 -- the current label or create object with labels higher than the
 -- current clearance.
 setClearance :: Label l => l -> LIO l ()
-setClearance = SetClearance
+setClearance = SetClearance 
 
 -- | Raises the current clearance (undoing the effects of
 -- 'setClearance') by exercising privileges.  If the current label is
@@ -258,7 +257,6 @@ guardAllocP = GuardAllocP
 -- would have to be higher than the current clearance.
 taint :: Label l => l -> LIO l ()
 taint = Taint
-
 
 -- | Like 'taint', but use privileges to reduce the amount of taint
 -- required.  Note that @taintP@ will never lower the current label.

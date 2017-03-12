@@ -152,6 +152,21 @@ runLIO lio_ s0 = do
             LIOState l c <- getLIOStateTCB
             unless (l `canFlowTo` c) $ throwLIO e
             maybe (throwLIO e) h $ fromException e
+      
+      GetLabel -> lioLabel `liftM` getLIOStateTCB
+      SetLabel -> withContext "setLabel" $ do
+        guardAlloc l
+        modifyLIOStateTCB $ \s -> s { lioLabel = l }
+      SetLabelP p l -> withContext "setLabelP" $ do
+        guardAllocP p l
+        modifyLIOStateTCB $ \s -> s { lioLabel = l }
+      
+      GetClearance -> lioClearance `liftM` getLIOStateTCB
+      SetClearance -> cnew = do
+        LIOState { lioLabel = l, lioClearance = c } <- getLIOStateTCB
+        unless (canFlowTo l cnew && canFlowTo cnew c) $
+          labelError "setClearance" [cnew]
+        putLIOStateTCB $ LIOState l cnew
 
       -- * Error handling
       WithContext ctx lio' ->
@@ -262,6 +277,10 @@ runLIO lio_ s0 = do
             Map.fromList `fmap` filterM (($ lnew) . snd) (Map.assocs m)
 
 
+
+
+
+ 
 -- | A variant of 'runLIO' that returns results in 'Right' and
 -- exceptions in 'Left', much like the standard library 'try'
 -- function.

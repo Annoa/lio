@@ -1,7 +1,7 @@
 {-# LANGUAGE Unsafe #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGAUGE MultiParamTypeClasses #-}
 {-# LANGUAGE GADTs #-}
 
 {- |
@@ -65,6 +65,7 @@ data LIOState l = LIOState { lioLabel     :: !l -- ^ Current label.
 -- runtime functions can use 'ioTCB' to perform 'IO' actions (which
 -- they should only do after appropriately checking labels).
 -- newtype LIO l a = LIOTCB (IORef (LIOState l) -> IO a) deriving (Typeable)
+
 
 data LIO l a where
   -- * Internal State
