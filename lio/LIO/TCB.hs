@@ -66,6 +66,7 @@ data LIOState l = LIOState { lioLabel     :: !l -- ^ Current label.
 -- they should only do after appropriately checking labels).
 -- newtype LIO l a = LIOTCB (IORef (LIOState l) -> IO a) deriving (Typeable)
 
+
 data LIO l a where
   -- * Internal State
   -- ** Labels
