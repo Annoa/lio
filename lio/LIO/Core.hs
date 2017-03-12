@@ -1,9 +1,9 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGAUGE GADT #-}
-{- | 
+{-# LANGUAGE GADTs #-}
+
+{- |
 
 This module implements the core of the Labeled IO (LIO) information
 flow control (IFC) library.  It provides a monad, 'LIO', that is
