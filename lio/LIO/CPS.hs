@@ -39,6 +39,9 @@ import LIO.Run (tryLIO, evalLIO, privInit)
 -- 'LIO' action throws an exception.  Forcing the result value will
 -- re-throw the exception, but the label state will always be valid.
 --
+-- This version uses an inner function to make the computations in
+-- Continuation--Passing Style.
+--
 -- See also 'evalLIO'.
 runLIO :: Label l => LIO l a -> LIOState l -> IO (a, LIOState l)
 runLIO lio_ s0 = do
